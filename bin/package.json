@@ -1,0 +1,15 @@
+{
+  "name": "extractor",
+  "version": "1.0.0",
+  "description": "",
+  "main": "extractor.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "dependencies": {
+    "lodash": "^4.17.21",
+    "typescript": "^4.2.2"
+  },
+  "license": "ISC"
+}
