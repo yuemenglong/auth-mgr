@@ -29,5 +29,5 @@ public interface IAuthMgr {
 
     IAuthMgr denyAll(String url, AuthMethod method);
 
-    boolean authenticate(String url, String token);
+    boolean authenticate(String url, AuthMethod method, String token);
 }

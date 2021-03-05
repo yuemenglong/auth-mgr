@@ -81,4 +81,20 @@ public class AuthTokenMgr {
         }
         return userMap.get(userId);
     }
+
+    // 超时直接删掉
+    public boolean isTokenValid(String token) {
+        if (token == null) {
+            return false;
+        }
+        if (!tokensMap.containsKey(token)) {
+            return false;
+        }
+        TokenInfo info = tokensMap.get(token);
+        if (info.expire < System.currentTimeMillis()) {
+            logout(token);
+            return false;
+        }
+        return true;
+    }
 }

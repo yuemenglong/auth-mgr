@@ -4,11 +4,9 @@ import io.github.yuemenglong.auth.AuthMethod;
 import io.github.yuemenglong.auth.AuthType;
 import org.springframework.util.AntPathMatcher;
 
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.HashSet;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -24,7 +22,7 @@ public class AuthRuleMgr {
         AuthType type;
 
         // 对应空集表明全部匹配
-        String[] roles;
+        Set<String> roles;
         int idx = (int) counter.incrementAndGet();
 
         @Override
@@ -37,55 +35,59 @@ public class AuthRuleMgr {
         }
     }
 
-    private static AtomicLong counter = new AtomicLong();
-    private static ConcurrentSkipListSet<Rule> rules = new ConcurrentSkipListSet<>();
-    private static ConcurrentHashMap<String, Rule> ruleMap = new ConcurrentHashMap<>();
+    private static final AtomicLong counter = new AtomicLong();
+    private static final ConcurrentSkipListSet<Rule> rules = new ConcurrentSkipListSet<>();
 
     // 已有的order不能修改
     synchronized private void addRule(String url, AuthMethod method, String[] roles, int order, AuthType type) {
-        String key = String.format("%s:%s", method, url);
-        if (!ruleMap.containsKey(key)) {
-            Rule rule = new Rule();
-            rule.order = order;
-            rules.add(rule);
-            ruleMap.put(key, rule);
-        }
-        Rule rule = ruleMap.get(key);
+        Rule rule = new Rule();
+        rule.order = order;
         rule.url = url;
         rule.method = method;
-        rule.roles = roles;
+        rule.roles = new HashSet<>(Arrays.asList(roles));
         rule.type = type;
+        rules.add(rule);
     }
 
     synchronized public void permit(String url, AuthMethod method, String[] roles, int order) {
         addRule(url, method, roles, order, AuthType.PERMIT);
     }
 
-    public void permitAll(String url, AuthMethod method, int order) {
+    synchronized public void permitAll(String url, AuthMethod method, int order) {
         addRule(url, method, new String[]{}, order, AuthType.PERMIT);
     }
 
-    public void deny(String url, AuthMethod method, String[] roles, int order) {
+    synchronized public void deny(String url, AuthMethod method, String[] roles, int order) {
         addRule(url, method, roles, order, AuthType.DENY);
     }
 
-    public void denyAll(String url, AuthMethod method, int order) {
+    synchronized public void denyAll(String url, AuthMethod method, int order) {
         addRule(url, method, new String[]{}, order, AuthType.DENY);
     }
 
-    public void clean(String url, AuthMethod method) {
-
+    synchronized public void clean(String url, AuthMethod method) {
+        rules.removeIf(rule -> rule.method.equals(method) && rule.url.equals(url));
     }
 
-    public void clean(String url) {
-
+    synchronized public void clean(String url) {
+        rules.removeIf(rule -> rule.url.equals(url));
     }
 
     public boolean authenticate(String url, AuthMethod method, String[] roles) {
+        AntPathMatcher matcher = new AntPathMatcher();
+        for (Rule rule : rules) {
+            if (method == rule.method && matcher.match(rule.url, url)) {
+                // 不分角色
+                if (rule.roles.size() == 0) {
+                    return rule.type == AuthType.PERMIT;
+                }
+                for (String role : roles) {
+                    if (rule.roles.contains(role)) {
+                        return rule.type == AuthType.PERMIT;
+                    }
+                }
+            }
+        }
         return false;
-    }
-
-    public static void main() {
-
     }
 }
