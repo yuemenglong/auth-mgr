@@ -6,4 +6,10 @@ public interface IAuthUser {
     String getName();
 
     String[] getRoles();
+
+    void setId(long id);
+
+    void setName(String name);
+
+    void setRoles(String[] roles);
 }
